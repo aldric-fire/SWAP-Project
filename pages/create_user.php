@@ -78,6 +78,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create User - SWAP</title>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/css/style.css?v=<?php echo time(); ?>">
+    <!-- Encryption libraries for client-side field encryption -->
+    <script src="https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl.min.js"></script>
+    <script src="<?php echo BASE_URL; ?>/javascripts/field-encryption.js"></script>
+</head>
 </head>
 <body class="has-sidebar">
     <?php include __DIR__ . '/../includes/sidebar.php'; ?>
@@ -105,8 +109,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <?php endif; ?>
 
-                    <form method="POST" action="">
-                        <?php echo csrf_token(); ?>
+<form method="POST" action="" onsubmit="return encryptFormBeforeSubmit(this, ['full_name'])">
+                        <?php echo csrf_field(); ?>
 
                         <div class="form-group">
                             <label for="username">Username:</label>

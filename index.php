@@ -30,20 +30,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
 
     $id = filter_var($_POST['delete_id'], FILTER_VALIDATE_INT);
     if ($id) {
-        if (delete_inventory_item($pdo, $id)) {
-            $success = 'Inventory item deleted successfully!';
+        try {
+            if (delete_inventory_item($pdo, $id)) {
+                $success = 'Inventory item deleted successfully!';
 
-            // Audit log (example: DELETE inventory_items id=10)
-            log_audit(
-                $pdo,
-                (int)$_SESSION['user_id'],
-                'DELETE',
-                'inventory_items',
-                $id,
-                'Inventory item deleted by authorized user.'
-            );
-        } else {
-            $error = 'Error deleting inventory item.';
+                // Audit log (example: DELETE inventory_items id=10)
+                log_audit(
+                    $pdo,
+                    (int)$_SESSION['user_id'],
+                    'DELETE',
+                    'inventory_items',
+                    $id,
+                    'Inventory item deleted by authorized user.'
+                );
+            } else {
+                $error = 'Could not delete inventory item.';
+            }
+        } catch (PDOException $e) {
+            // Log error but don't show detailed message to user (security)
+            error_log('Delete inventory item error: ' . $e->getMessage());
+            $error = 'Could not delete inventory item.';
         }
     } else {
         $error = 'Invalid item ID.';

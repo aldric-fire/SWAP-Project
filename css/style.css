@@ -117,6 +117,9 @@ h1, h2, h3, h4, h5, h6 {
     line-height: 1.2;
     color: var(--color-gray-900);
     margin-bottom: var(--spacing-md);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 h1 { font-size: 2.25rem; }  /* 36px */
@@ -129,6 +132,9 @@ h6 { font-size: 1rem; }     /* 16px */
 p {
     margin-bottom: var(--spacing-md);
     color: var(--color-text);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 a {
@@ -145,6 +151,15 @@ a:hover {
 small {
     font-size: 0.875rem;
     color: var(--color-text-light);
+}
+
+code,
+kbd {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    max-width: 100%;
+    display: inline-block;
 }
 
 /* ========================================
@@ -501,6 +516,9 @@ main {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin: 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .stat-card .stat-value {
@@ -509,6 +527,8 @@ main {
     color: var(--color-gray-900);
     margin-bottom: var(--spacing-xs);
     line-height: 1;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .stat-card .stat-label {
@@ -562,6 +582,10 @@ main {
     color: var(--color-gray-900);
     margin-bottom: var(--spacing-sm);
     font-size: 1.25rem;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    max-width: 100%;
 }
 
 .product-card .price {
@@ -605,6 +629,21 @@ main {
     color: var(--color-danger);
 }
 
+/* Generic badge style (used in tables and lists) */
+.badge {
+    display: inline-block;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    max-width: 100%;
+}
+
 /* ========================================
    BUTTONS
    Comprehensive button system with variants
@@ -624,6 +663,9 @@ main {
     text-align: center;
     line-height: 1.5;
     box-shadow: var(--shadow-sm);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .btn:hover {
@@ -747,6 +789,7 @@ main {
 .form-group select,
 .form-group textarea {
     width: 100%;
+    max-width: 100%;
     padding: var(--spacing-md);
     border: 2px solid var(--color-border);
     border-radius: var(--radius-md);
@@ -755,6 +798,9 @@ main {
     transition: all 0.2s ease;
     background-color: var(--color-white);
     color: var(--color-text);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .form-group input::placeholder,
@@ -782,6 +828,9 @@ main {
 .form-group textarea {
     resize: vertical;
     min-height: 120px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .form-group select {
@@ -792,6 +841,16 @@ main {
     background-repeat: no-repeat;
     background-size: 1.5rem 1.5rem;
     appearance: none;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.form-group select option {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    max-width: 100%;
 }
 
 /* Form validation states */
@@ -854,6 +913,10 @@ table td {
     padding: var(--spacing-md);
     text-align: left;
     border-bottom: 1px solid var(--color-border);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    max-width: 200px;
 }
 
 table thead {
@@ -866,7 +929,10 @@ table th {
     text-transform: uppercase;
     font-size: 0.875rem;
     letter-spacing: 0.5px;
-    white-space: nowrap;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 table tbody tr {
@@ -888,6 +954,8 @@ table tbody tr:nth-child(even):hover {
 
 table td {
     color: var(--color-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Table cell alignment helpers */
@@ -1169,6 +1237,14 @@ footer a:hover {
     table th,
     table td {
         padding: var(--spacing-sm);
+        max-width: 100px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        word-break: break-word;
+    }
+    
+    table th {
+        white-space: normal;
     }
     
     /* Cards */

@@ -4,12 +4,15 @@
  *
  * Centralizes user-related database operations.
  * Uses PDO prepared statements only. (OWASP A03: Injection)
+ * Includes field-level encryption for sensitive PII (full_name)
  */
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/encryption.php';
 
 /**
  * Fetch all users
+ * Decrypts full_name field before returning
  */
 function fetch_all_users(PDO $pdo): array
 {
@@ -18,21 +21,37 @@ function fetch_all_users(PDO $pdo): array
          FROM users
          ORDER BY role DESC, username ASC'
     );
-    return $stmt->fetchAll();
+    $users = $stmt->fetchAll();
+    
+    // Decrypt sensitive fields
+    foreach ($users as &$user) {
+        $user['full_name'] = decrypt_field($user['full_name']);
+    }
+    
+    return $users;
 }
 
 /**
  * Fetch user by ID
+ * Decrypts full_name field before returning
  */
 function fetch_user_by_id(PDO $pdo, int $userId): ?array
 {
     $stmt = $pdo->prepare('SELECT * FROM users WHERE user_id = :id');
     $stmt->execute([':id' => $userId]);
-    return $stmt->fetch() ?: null;
+    $user = $stmt->fetch();
+    
+    if ($user) {
+        // Decrypt sensitive fields
+        $user['full_name'] = decrypt_field($user['full_name']);
+    }
+    
+    return $user ?: null;
 }
 
 /**
  * Create new user
+ * Encrypts full_name before storing in database
  */
 function create_user(PDO $pdo, array $data): int
 {
@@ -44,7 +63,7 @@ function create_user(PDO $pdo, array $data): int
     $stmt->execute([
         ':username' => $data['username'],
         ':password_hash' => $data['password_hash'],
-        ':full_name' => $data['full_name'],
+        ':full_name' => encrypt_field($data['full_name']),
         ':role' => $data['role'],
         ':status' => $data['status'] ?? 'Active'
     ]);
@@ -54,6 +73,7 @@ function create_user(PDO $pdo, array $data): int
 
 /**
  * Update user
+ * Encrypts full_name before updating in database
  */
 function update_user(PDO $pdo, array $data): bool
 {
@@ -68,7 +88,7 @@ function update_user(PDO $pdo, array $data): bool
 
     return $stmt->execute([
         ':user_id' => (int)$data['user_id'],
-        ':full_name' => $data['full_name'],
+        ':full_name' => encrypt_field($data['full_name']),
         ':role' => $data['role'],
         ':status' => $data['status']
     ]);

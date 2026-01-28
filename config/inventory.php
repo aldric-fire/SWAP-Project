@@ -83,6 +83,27 @@ function update_inventory_item(PDO $pdo, array $data): bool
 
 function delete_inventory_item(PDO $pdo, int $itemId): bool
 {
-    $stmt = $pdo->prepare('DELETE FROM inventory_items WHERE item_id = :id');
-    return $stmt->execute([':id' => $itemId]);
+    try {
+        // Start transaction to ensure data integrity
+        $pdo->beginTransaction();
+        
+        // First, delete all stock requests related to this item
+        $stmt = $pdo->prepare('DELETE FROM stock_requests WHERE item_id = :id');
+        $stmt->execute([':id' => $itemId]);
+        
+        // Then delete the inventory item
+        $stmt = $pdo->prepare('DELETE FROM inventory_items WHERE item_id = :id');
+        $result = $stmt->execute([':id' => $itemId]);
+        
+        // Commit transaction
+        $pdo->commit();
+        
+        return $result;
+    } catch (PDOException $e) {
+        // Rollback on error
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
 }
