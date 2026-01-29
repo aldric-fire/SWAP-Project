@@ -11,6 +11,34 @@ require_once __DIR__ . '/../middleware/rbac.php';
 
 require_login();
 
+require_role(['Admin']); // ✅ Access control
+
+// ✅ Date range filtering (default: last 30 days)
+$fromDate = $_GET['from'] ?? date('Y-m-d', strtotime('-30 days'));
+$toDate   = $_GET['to'] ?? date('Y-m-d');
+
+$error = '';
+$message = '';
+
+// ✅ Log report usage
+$usageLog = $pdo->prepare(
+    'INSERT INTO report_usage (report_name, viewed_by)
+     VALUES (:report, :user)'
+);
+$usageLog->execute([
+    'report' => 'System Reports Dashboard',
+    'user'   => $_SESSION['user_id']
+]);
+
+// ✅ Archive old audit logs (Admin action)
+if (isset($_POST['archive_old'])) {
+    $pdo->exec(
+        'DELETE FROM audit_logs
+         WHERE timestamp < DATE_SUB(NOW(), INTERVAL 1 YEAR)'
+    );
+    $message = 'Old audit logs archived successfully.';
+}
+
 // Fetch inventory summary
 $inventorySummary = $pdo->query(
     'SELECT 
@@ -64,6 +92,7 @@ $topRequesters = $pdo->query(
      ORDER BY request_count DESC
      LIMIT 5'
 )->fetchAll();
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -83,6 +112,34 @@ $topRequesters = $pdo->query(
 
         <main>
             <div class="container">
+
+            <?php if ($error): ?>
+<div class="alert alert-danger"><?php echo $error; ?></div>
+<?php endif; ?>
+
+<?php if ($message): ?>
+<div class="alert alert-success"><?php echo $message; ?></div>
+<?php endif; ?>
+
+<form method="get" class="mb-lg">
+    <label>From</label>
+    <input type="date" name="from" value="<?php echo htmlspecialchars($fromDate); ?>">
+
+    <label>To</label>
+    <input type="date" name="to" value="<?php echo htmlspecialchars($toDate); ?>">
+
+    <button class="btn btn-sm btn-primary">Filter</button>
+
+    <a href="export_report.php?type=audit&from=<?php echo $fromDate; ?>&to=<?php echo $toDate; ?>"
+       class="btn btn-sm btn-secondary">
+       Export Audit Report
+    </a>
+</form>
+<form method="post" class="mt-lg">
+     <button name="archive_old" class="btn btn-danger btn-sm"
+      onclick="return confirm('Archive audit logs older than 1 year?');"> Archive Old Audit Logs </button> 
+    </form>
+
                 <!-- Inventory Summary -->
                 <div class="card mb-lg">
                     <h3 class="mb-lg">📦 Inventory Summary</h3>
@@ -207,6 +264,8 @@ $topRequesters = $pdo->query(
         </main>
 
         <?php include __DIR__ . '/../includes/footer.php'; ?>
+        
     </div>
 </body>
 </html>
+
