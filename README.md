@@ -5,9 +5,14 @@
 
 ## 📌 LATEST UPDATES
 
+- ✅ **Stock Management Fix** - Inventory no longer decrements on approval (only when physically dispatched)
+- ✅ **Unlimited Request Quantities** - Staff can request any amount needed
+- ✅ **Quick Request Button** - Direct request shortcuts from inventory cards with item pre-selection
+- ✅ **Enhanced UX** - Cleaner column headers ("From" instead of "Requester"), removed unnecessary min threshold display
+- ✅ **Fixed Reports** - Corrected database schema alignment for exports and audit logs
+- ✅ **Admin-Only Reports** - Restricted reporting access to Admin role for better security
 - ✅ **Priority Score Normalization** - Ratio-based calculation (0-400 range) prevents inflated scores
 - ✅ **Advanced Reporting** - Date filtering, CSV export, and audit log archiving
-- ✅ **Transaction-Based Approvals** - Atomic inventory deduction with rollback protection
 - ✅ **Privacy-First Design** - User inputs computed into scores, not stored in database
 - ✅ **Modern UI** - Sidebar navigation, role-based dashboards, responsive design
 
@@ -36,8 +41,8 @@
 | Role | Access Level | Key Capabilities |
 |------|--------------|------------------|
 | **Admin** 👨‍💼 | Full System Access | Manage users, inventory, view reports, complete system control |
-| **Manager** 📋 | Supervisory | Approve/reject stock requests, manage inventory, generate reports |
-| **Staff** 👤 | Request Submission | View inventory, submit stock requests with urgency levels |
+| **Manager** 📋 | Supervisory | Approve/reject stock requests, manage inventory (no reports) |
+| **Staff** 👤 | Operations | Manage inventory, submit stock requests, update stock levels |
 | **Auditor** 📝 | Read-Only | Monitor audit logs, view system activity for compliance |
 
 ---
@@ -54,24 +59,26 @@
 
 ### 2. Stock Requests Module (Staff/Manager)
 **Staff Workflow:**
-- Submit inventory requests with item selection
-- Specify quantity (validated against available stock)
+- Submit inventory requests with item selection (no quantity limits)
+- Quick request shortcut button on inventory cards with item pre-selection
 - Provide project deadline (UTC format with strict validation)
 - Report stock level (Low/Medium/High) and usage frequency
 - View personal request history with color-coded priority scores
+- Add and update inventory items when stock arrives or is used
 
 **Manager Workflow:**
 - Review pending requests sorted by priority score
 - **Multi-factor priority calculation (0-400 range):**
-  - Request Size (0-300 pts): (Qty ÷ Available Stock) × 100 × Urgency (1-3)
-  - Stock Shortage (0-50 pts): Auto-calculated from database
+  - Request Size (0-300 pts): (Requested Qty ÷ Available Stock) × 100 × Urgency (1-3)
+  - Stock Shortage (0-50 pts): Auto-calculated from database (below min threshold)
   - Usage Frequency (0-30 pts): Based on reported frequency
   - Supplier Lead Time (0-20 pts): Longer deliveries = higher priority
 - Color-coded priority (Red >200, Yellow >100, Green <100)
-- Approve/reject with automatic inventory deduction (transaction-based)
+- Approve/reject requests (inventory NOT auto-decremented on approval)
+- Stock only updates when Staff manually adjusts after physical dispatch
 - Reversal capability with audit trail
 
-### 3. Reports Module (Manager/Admin)
+### 3. Reports Module (Admin Only)
 - **Inventory Summary**: Total items, available, low stock, out of stock
 - **Request Analytics**: Total, pending, approved, rejected, completed requests
 - **Low Stock Alert**: Items below minimum threshold (top 10)
@@ -79,9 +86,10 @@
 - **Audit Activity**: 30-day action breakdown by type
 - **Advanced Features**:
   - Date range filtering for audit logs
-  - CSV export for reports (Admin only)
+  - CSV export for reports with proper schema alignment
   - Archive old logs (delete records older than 1 year)
-  - Detailed view with IP tracking and timestamps
+  - Detailed view with timestamps and user tracking
+- **Access Control**: Admin only (removed Manager access for security)
 
 ---
 
@@ -232,21 +240,28 @@ Run `sample_data.sql` after `database.sql` to populate demo data.
 
 ### Workflow 2: Stock Requests (Staff → Manager)
 1. Login as `staff_user`
-2. Click "📦 Submit Request"
-3. Select item, enter quantity (e.g., 50), choose urgency "High"
-4. Submit request → Priority score calculated (50×3=150)
-5. Logout & login as `manager_user`
-6. Click "✅ Approve Requests"
-7. View pending request with priority color-coding
-8. Approve or reject → Audit log updated
+2. Navigate to Inventory page
+3. Click "📦 Request" button on any item (item auto-selected)
+4. OR click "📦 Submit Request" in sidebar
+5. Enter quantity (no limits - request any amount needed)
+6. Provide project deadline in UTC format (e.g., "2026-02-05 18:00 UTC")
+7. Select stock level and usage frequency
+8. Submit request → Priority score calculated automatically
+9. Logout & login as `manager_user`
+10. Click "✅ Approve Requests"
+11. View pending requests sorted by priority with actual stock levels
+12. Approve or reject → Stock remains unchanged (Staff updates manually when dispatched)
+13. Verify audit log captures all actions
 
-### Workflow 3: System Reports (Manager/Admin)
-1. Login as `admin` or `manager_user`
+### Workflow 3: System Reports (Admin Only)
+1. Login as `admin`
 2. Click "📊 Reports"
 3. View inventory summary (total, available, low stock)
 4. Check request analytics (pending, approved, rejected)
 5. Review low stock items table
 6. See top requesters and 30-day audit activity
+7. Export audit logs to CSV with date range filtering
+8. Archive old audit logs (optional)
 
 ---
 
