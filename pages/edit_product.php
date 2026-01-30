@@ -13,7 +13,7 @@ require_once __DIR__ . '/../middleware/csrf.php';
 require_once __DIR__ . '/../config/inventory.php';
 require_once __DIR__ . '/../config/audit.php';
 
-// Only authorized roles may edit inventory items (OWASP A01)
+// Staff handle day-to-day inventory management
 require_role(['Admin', 'Manager', 'Staff']);
 
 $pageTitle = 'Edit Inventory Item';

@@ -15,6 +15,9 @@ require_once __DIR__ . '/../config/audit.php';
 
 require_login();
 
+// Get pre-selected item from URL parameter (if coming from inventory page)
+$preselectedItemId = filter_var($_GET['item_id'] ?? null, FILTER_VALIDATE_INT);
+
 // Fetch inventory items for dropdown
 $items = fetch_inventory_items($pdo);
 
@@ -76,16 +79,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if ($selectedItem && $quantity) {
-        $minThreshold = (int)$selectedItem['min_threshold'];
-        $currentQty = (int)$selectedItem['quantity'];
-
-        if ($minThreshold > $currentQty) {
-            $errors[] = 'This item currently has no fulfillable stock. Please try again after stock is updated.';
-        } elseif ($quantity < $minThreshold || $quantity > $currentQty) {
-            $errors[] = 'Quantity must be between ' . format_number($minThreshold) . ' and ' . format_number($currentQty) . ' for the selected item.';
-        }
-    }
+    // No quantity limits - staff can request any amount they need
+    // Managers will evaluate requests based on availability and priority
 
     if (!in_array($reportedStockLevel, ['Low', 'Medium', 'High'], true)) {
         $errors[] = 'Invalid stock level selection.';
@@ -175,7 +170,7 @@ $userRequests = fetch_user_requests($pdo, (int)$_SESSION['user_id']);
                                 <select id="item_id" name="item_id" required>
                                     <option value="">-- Select Item --</option>
                                     <?php foreach ($items as $item): ?>
-                                    <option value="<?php echo (int)$item['item_id']; ?>">
+                                    <option value="<?php echo (int)$item['item_id']; ?>" <?php echo ($preselectedItemId && $preselectedItemId === (int)$item['item_id']) ? 'selected' : ''; ?>>
                                         <?php 
                                         $displayName = $item['item_name'];
                                         if (strlen($displayName) > 24) {
@@ -183,7 +178,7 @@ $userRequests = fetch_user_requests($pdo, (int)$_SESSION['user_id']);
                                         }
                                         echo htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8');
                                         ?> 
-                                        (Current: <?php echo format_number($item['quantity']); ?>, Min: <?php echo format_number($item['min_threshold']); ?>)
+                                        (Current: <?php echo format_number($item['quantity']); ?>)
                                     </option>
                                     <?php endforeach; ?>
                                 </select>
@@ -307,43 +302,18 @@ $userRequests = fetch_user_requests($pdo, (int)$_SESSION['user_id']);
         };
 
         // Update quantity limits when item is selected
-        function clampQuantityToRange() {
-            const minVal = parseInt(quantityInput.min, 10);
-            const maxVal = parseInt(quantityInput.max, 10);
-            const currentVal = parseInt(quantityInput.value, 10);
-
-            if (!Number.isNaN(currentVal)) {
-                if (currentVal < minVal) {
-                    quantityInput.value = String(minVal);
-                } else if (currentVal > maxVal) {
-                    quantityInput.value = String(maxVal);
-                }
-            }
-        }
-
         itemSelect.addEventListener('change', function() {
             if (this.value && itemsData[this.value]) {
                 const item = itemsData[this.value];
-                const minThreshold = Number(item.minThreshold);
                 const currentQty = Number(item.currentQty);
 
-                if (currentQty < minThreshold) {
-                    quantityInput.min = String(minThreshold);
-                    quantityInput.max = String(currentQty);
-                    quantityInput.placeholder = 'No stock available';
-                    helperEl.textContent = 'No stock available for this item. Please try again later.';
-                    quantityInput.value = '';
-                    quantityInput.disabled = true;
-                    submitButton.disabled = true;
-                } else {
-                    quantityInput.min = String(minThreshold);
-                    quantityInput.max = String(currentQty);
-                    quantityInput.placeholder = `Min: ${minThreshold}, Max: ${currentQty}`;
-                    helperEl.textContent = `Allowed range: ${minThreshold} - ${currentQty}`;
-                    quantityInput.disabled = false;
-                    submitButton.disabled = false;
-                    clampQuantityToRange();
-                }
+                // No limits - staff can request any amount
+                quantityInput.min = '1';
+                quantityInput.max = '999999999';
+                quantityInput.placeholder = `e.g., 50 (Current stock: ${currentQty})`;
+                helperEl.textContent = `Current available stock: ${currentQty}`;
+                quantityInput.disabled = false;
+                submitButton.disabled = false;
             } else {
                 quantityInput.min = '1';
                 quantityInput.max = '999999999';
@@ -353,7 +323,4 @@ $userRequests = fetch_user_requests($pdo, (int)$_SESSION['user_id']);
                 submitButton.disabled = false;
             }
         });
-
-        quantityInput.addEventListener('blur', clampQuantityToRange);
-        quantityInput.addEventListener('change', clampQuantityToRange);
     </script>

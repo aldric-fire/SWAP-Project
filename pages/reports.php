@@ -20,17 +20,7 @@ $toDate   = $_GET['to'] ?? date('Y-m-d');
 $error = '';
 $message = '';
 
-// ✅ Log report usage
-$usageLog = $pdo->prepare(
-    'INSERT INTO report_usage (report_name, viewed_by)
-     VALUES (:report, :user)'
-);
-$usageLog->execute([
-    'report' => 'System Reports Dashboard',
-    'user'   => $_SESSION['user_id']
-]);
-
-// ✅ Archive old audit logs (Admin action)
+// Archive old audit logs (Admin action)
 if (isset($_POST['archive_old'])) {
     $pdo->exec(
         'DELETE FROM audit_logs

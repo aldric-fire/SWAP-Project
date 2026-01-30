@@ -81,8 +81,8 @@
             </li>
             <?php endif; ?>
             
-            <!-- Reports (Manager & Admin) -->
-            <?php if (in_array($_SESSION['role'], ['Manager', 'Admin'])): ?>
+            <!-- Reports (Admin Only) -->
+            <?php if ($_SESSION['role'] === 'Admin'): ?>
             <li>
                 <a href="<?php echo BASE_URL; ?>/pages/reports.php" class="menu-icon-reports <?php echo (basename($_SERVER['PHP_SELF']) === 'reports.php') ? 'active' : ''; ?>">
                     📊 Reports

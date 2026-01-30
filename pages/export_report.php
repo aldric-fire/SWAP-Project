@@ -23,7 +23,7 @@ if ($type !== 'audit') {
 
 // Build query
 $query = "
-    SELECT a.created_at, u.username, a.action, a.description, a.ip_address
+    SELECT a.timestamp, u.username, a.action_type, a.target_table, a.target_id, a.description
     FROM audit_logs a
     LEFT JOIN users u ON a.user_id = u.user_id
     WHERE 1=1
@@ -32,26 +32,28 @@ $query = "
 $params = [];
 
 if (!empty($from)) {
-    $query .= " AND a.created_at >= :from";
+    $query .= " AND a.timestamp >= :from";
     $params['from'] = $from . ' 00:00:00';
 }
 
 if (!empty($to)) {
-    $query .= " AND a.created_at <= :to";
+    $query .= " AND a.timestamp <= :to";
     $params['to'] = $to . ' 23:59:59';
 }
 
-$query .= " ORDER BY a.created_at DESC";
+$query .= " ORDER BY a.timestamp DESC";
 
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Log export action
-audit_log(
+log_audit(
     $pdo,
-    $_SESSION['user_id'],
-    'EXPORT_REPORT',
+    (int)$_SESSION['user_id'],
+    'CREATE',
+    'reports',
+    0,
     "Exported audit report from $from to $to"
 );
 
@@ -67,21 +69,23 @@ $output = fopen('php://output', 'w');
 
 // CSV header row
 fputcsv($output, [
-    'Date',
+    'Timestamp',
     'Username',
-    'Action',
-    'Description',
-    'IP Address'
+    'Action Type',
+    'Target Table',
+    'Target ID',
+    'Description'
 ]);
 
 // CSV data rows
 foreach ($data as $row) {
     fputcsv($output, [
-        $row['created_at'],
+        $row['timestamp'],
         $row['username'] ?? 'System',
-        $row['action'],
-        $row['description'],
-        $row['ip_address']
+        $row['action_type'],
+        $row['target_table'],
+        $row['target_id'],
+        $row['description']
     ]);
 }
 

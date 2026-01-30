@@ -90,7 +90,7 @@ $processedRequests = $stmt->fetchAll();
                                     <th class="col-qty text-center">Qty</th>
                                     <th class="col-stock text-center">Stock Level</th>
                                     <th class="col-priority text-center">Priority</th>
-                                    <th class="col-requested-by">Request By</th>
+                                    <th class="col-requested-by">From</th>
                                     <th class="col-date">Date</th>
                                     <th class="col-actions text-center">Actions</th>
                                 </tr>
@@ -118,9 +118,7 @@ $processedRequests = $stmt->fetchAll();
                                         <span class="stock-level">
                                             <?php
                                             $currentQty = (int)($req['current_quantity'] ?? 0);
-                                            $requestedQty = (int)($req['quantity'] ?? 0);
-                                            $availableQty = max(0, $currentQty - $requestedQty);
-                                            echo format_number($availableQty);
+                                            echo format_number($currentQty);
                                             ?>
                                         </span>
                                     </td>
@@ -184,7 +182,7 @@ $processedRequests = $stmt->fetchAll();
                                     <th class="col-item">Item</th>
                                     <th class="col-qty text-center">Qty</th>
                                     <th class="col-priority text-center">Priority</th>
-                                    <th class="col-requested-by">Request By</th>
+                                    <th class="col-requested-by">From</th>
                                     <th class="col-date">Date</th>
                                     <th class="col-date">Status</th>
                                     <th class="col-actions text-center">Actions</th>

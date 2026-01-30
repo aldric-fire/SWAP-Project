@@ -96,15 +96,8 @@ function approve_request(PDO $pdo, int $requestId, int $managerId): bool
             ':request_id' => (int)$requestId
         ]);
         
-        // Decrement inventory quantity
-        $stmt = $pdo->prepare(
-            'UPDATE inventory_items SET quantity = GREATEST(0, quantity - :quantity) 
-             WHERE item_id = :item_id'
-        );
-        $stmt->execute([
-            ':quantity' => (int)$request['quantity'],
-            ':item_id' => (int)$request['item_id']
-        ]);
+        // NOTE: Approval does NOT decrement inventory
+        // Stock is only reduced when items are physically allocated/dispatched
         
         $pdo->commit();
         return true;

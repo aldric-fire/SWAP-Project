@@ -116,6 +116,9 @@ $canEdit = in_array($_SESSION['role'], ['Admin', 'Manager', 'Staff'], true);
                                 <?php if ($canEdit): ?>
                                     <a href="<?php echo BASE_URL; ?>/pages/edit_product.php?id=<?php echo (int)$row['item_id']; ?>" class="btn btn-edit">Edit</a>
                                 <?php endif; ?>
+                                <?php if ($_SESSION['role'] === 'Staff'): ?>
+                                    <a href="<?php echo BASE_URL; ?>/pages/submit_request.php?item_id=<?php echo (int)$row['item_id']; ?>" class="btn btn-primary">📦 Request</a>
+                                <?php endif; ?>
                                 <?php if ($canManage): ?>
                                     <form method="POST" action="" style="display:inline;">
                                         <?php echo csrf_field(); ?>

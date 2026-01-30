@@ -9,10 +9,14 @@
  */
 
 // Map supplier_id to lead_time_days
-// Update these based on your actual supplier data
+// Based on suppliers in sample_data.sql
 $SUPPLIER_LEAD_TIMES = [
     // Format: supplier_id => lead_time_in_days
-    // Example: if supplier_id=1 has 7-day lead time, add: 1 => 7
+    1 => 7,   // TechSupply Co. - Fast tech supplier (7 days)
+    2 => 5,   // Office Essentials Ltd. - Quick office supplies (5 days)
+    3 => 21,  // Hardware Plus - Furniture/heavy equipment (21 days)
+    4 => 14,  // Premium Goods Inc. - Quality tools (14 days)
+    5 => 3,   // FastShip Distributors - Express safety equipment (3 days)
 ];
 
 /**
