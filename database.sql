@@ -107,5 +107,3 @@ CREATE TABLE IF NOT EXISTS reports (
     status ENUM('Active', 'Archived') DEFAULT 'Active',
     CONSTRAINT fk_report_user FOREIGN KEY (generated_by) REFERENCES users(user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Setup complete! Your database is ready to use.
