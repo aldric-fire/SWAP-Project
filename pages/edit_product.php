@@ -1,0 +1,177 @@
+<?php
+/**
+ * Edit Inventory Item Page
+ *
+ * Allows editing of existing inventory items.
+ * Fetches item by ID from URL, displays pre-filled form, and updates database on submission.
+ */
+
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/session.php';
+require_once __DIR__ . '/../middleware/rbac.php';
+require_once __DIR__ . '/../middleware/csrf.php';
+require_once __DIR__ . '/../config/inventory.php';
+require_once __DIR__ . '/../config/audit.php';
+
+// Only authorized roles may edit inventory items (OWASP A01)
+require_role(['Admin', 'Manager', 'Staff']);
+
+$pageTitle = 'Edit Inventory Item';
+
+// Redirect if no ID provided in URL
+$id = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT);
+if (!$id) {
+    header('Location: ' . BASE_URL . '/index.php');
+    exit;
+}
+
+// Fetch suppliers for selection (FK integrity)
+$suppliers = fetch_suppliers($pdo);
+$supplierIds = array_column($suppliers, 'supplier_id');
+
+/**
+ * Handle form submission
+ * Updates existing inventory item in database
+ */
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    csrf_validate();
+
+    $itemName = trim($_POST['item_name'] ?? '');
+    $category = trim($_POST['category'] ?? '');
+    $quantity = (int)($_POST['quantity'] ?? 0); // Cast directly to allow large numbers
+    $minThreshold = (int)($_POST['min_threshold'] ?? 0); // Cast directly to allow large numbers
+    $supplierId = filter_var($_POST['supplier_id'] ?? null, FILTER_VALIDATE_INT);
+
+    if ($itemName === '' || $quantity <= 0 || $minThreshold < 0) {
+        $error = 'Please fill all fields correctly. Quantity must be greater than 0.';
+    } elseif ($supplierId && !in_array($supplierId, $supplierIds, true)) {
+        $error = 'Invalid supplier selection.';
+    } else {
+        // Derive status server-side (prevent tampering)
+        if ($quantity <= 0) {
+            $status = 'Out of Stock';
+        } elseif ($quantity <= $minThreshold) {
+            $status = 'Low Stock';
+        } else {
+            $status = 'Available';
+        }
+
+        if (update_inventory_item($pdo, [
+            'item_name' => $itemName,
+            'category' => ($category === '' ? null : $category),
+            'quantity' => $quantity,
+            'min_threshold' => $minThreshold,
+            'supplier_id' => $supplierId ?: null,
+            'last_updated_by' => $_SESSION['user_id'],
+            'status' => $status,
+            'item_id' => $id
+        ])) {
+            $success = 'Inventory item updated successfully!';
+
+            // Audit log (example: UPDATE inventory_items id=10)
+            log_audit(
+                $pdo,
+                (int)$_SESSION['user_id'],
+                'UPDATE',
+                'inventory_items',
+                $id,
+                'Inventory item updated by authorized user.'
+            );
+        } else {
+            $error = 'Error updating inventory item.';
+        }
+    }
+}
+
+// Fetch inventory item details for form
+$item = fetch_inventory_item($pdo, $id);
+
+if (!$item) {
+    header('Location: ' . BASE_URL . '/index.php');
+    exit;
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo $pageTitle; ?> - SIAMS</title>
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>/css/style.css?v=<?php echo time(); ?>">
+</head>
+<body class="has-sidebar">
+    <?php include __DIR__ . '/../includes/sidebar.php'; ?>
+
+    <div class="main-wrapper">
+        <header class="top-header">
+            <h2>Edit Inventory Item</h2>
+            <div class="top-header-actions">
+                <div class="header-icons">
+                    <button class="icon-btn" title="Help">ℹ️</button>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <div class="container">
+        <div class="card">
+            <h2>Edit Inventory Item</h2>
+
+            <?php if (isset($success)): ?>
+                <div class="alert alert-success"><?php echo $success; ?></div>
+            <?php endif; ?>
+
+            <?php if (isset($error)): ?>
+                <div class="alert alert-error"><?php echo $error; ?></div>
+            <?php endif; ?>
+
+            <form method="POST" action="" onsubmit="return validateInventoryForm()">
+                <?php echo csrf_field(); ?>
+                <div class="form-group">
+                    <label for="item_name">Item Name:</label>
+                    <input type="text" id="item_name" name="item_name" value="<?php echo htmlspecialchars($item['item_name']); ?>" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="category">Category (optional):</label>
+                    <input type="text" id="category" name="category" value="<?php echo htmlspecialchars($item['category'] ?? ''); ?>">
+                </div>
+
+                <div class="form-group">
+                    <label for="quantity">Quantity:</label>
+                    <input type="number" id="quantity" name="quantity" min="0" max="2147483647" value="<?php echo (int)$item['quantity']; ?>" required>
+                    <small style="color: var(--color-text-light); margin-top: 6px; display: block;">⚠️ Maximum quantity: 2.1B (2,147,483,647)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="min_threshold">Minimum Threshold:</label>
+                    <input type="number" id="min_threshold" name="min_threshold" min="0" max="2147483647" value="<?php echo (int)$item['min_threshold']; ?>" required>
+                    <small style="color: var(--color-text-light); margin-top: 6px; display: block;">⚠️ Maximum threshold: 2.1B (2,147,483,647)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="supplier_id">Supplier (optional):</label>
+                    <select id="supplier_id" name="supplier_id">
+                        <option value="">-- Select supplier --</option>
+                        <?php foreach ($suppliers as $supplier): ?>
+                            <option value="<?php echo (int)$supplier['supplier_id']; ?>" <?php echo ((int)$item['supplier_id'] === (int)$supplier['supplier_id']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($supplier['supplier_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Update Item</button>
+                <a href="<?php echo BASE_URL; ?>/index.php" class="btn">Cancel</a>
+            </form>
+        </div>
+            </div>
+        </main>
+
+        <?php include __DIR__ . '/../includes/footer.php'; ?>
+    </div>
+
+    <script src="<?php echo BASE_URL; ?>/javascripts/script.js"></script>
+</body>
+</html>

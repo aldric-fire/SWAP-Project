@@ -1,0 +1,32 @@
+# Sensitive Files
+config/config.php
+.env
+
+# Session & Cache
+sessions/
+cache/
+*.tmp
+
+# Logs
+logs/
+*.log
+
+# Database files
+*.sql.bak
+*.backup
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Composer/Dependencies
+vendor/
+node_modules/
+
+# PHP Built-in Server
+.php-version
