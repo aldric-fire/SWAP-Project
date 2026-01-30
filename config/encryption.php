@@ -47,22 +47,26 @@ function encrypt_field(string $plaintext, ?string $key = null): string
         return $plaintext; // Return empty strings as-is
     }
     
-    $key = $key ?? get_encryption_key();
+    $keyHex = $key ?? get_encryption_key();
+    // Convert hex key to binary (AES-256 requires 32 bytes)
+    $key = hex2bin($keyHex);
+    
+    if ($key === false || strlen($key) !== 32) {
+        throw new Exception('Invalid encryption key: must be 64-character hex string (32 bytes)');
+    }
+    
     $cipher = 'aes-256-gcm';
     
     // Generate random IV (16 bytes for GCM)
     $iv = openssl_random_pseudo_bytes(16);
     
-    // Encrypt data
-    $encrypted = openssl_encrypt($plaintext, $cipher, $key, OPENSSL_RAW_DATA, $iv);
+    // Encrypt data with authentication tag
+    $tag = '';
+    $encrypted = openssl_encrypt($plaintext, $cipher, $key, OPENSSL_RAW_DATA, $iv, $tag);
     
     if ($encrypted === false) {
         throw new Exception('Encryption failed: ' . openssl_error_string());
     }
-    
-    // Get authentication tag (16 bytes)
-    $tag = '';
-    openssl_encrypt($plaintext, $cipher, $key, OPENSSL_RAW_DATA, $iv, $tag);
     
     // Combine: IV || ENCRYPTED_DATA || AUTH_TAG
     $combined = $iv . $encrypted . $tag;
@@ -92,7 +96,14 @@ function decrypt_field(string $encrypted, ?string $key = null): string
     }
     
     try {
-        $key = $key ?? get_encryption_key();
+        $keyHex = $key ?? get_encryption_key();
+        // Convert hex key to binary
+        $key = hex2bin($keyHex);
+        
+        if ($key === false || strlen($key) !== 32) {
+            throw new Exception('Invalid decryption key');
+        }
+        
         $cipher = 'aes-256-gcm';
         
         // Remove 'ENC:' prefix and decode from base64

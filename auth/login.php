@@ -262,13 +262,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             gap: 0.75rem;
         }
 
-        .alert-error p::before {
-            content: "✗";
-            font-size: 1.25rem;
-            font-weight: 700;
-            flex-shrink: 0;
-        }
-
         .form-group {
             margin-bottom: 1.5rem;
         }

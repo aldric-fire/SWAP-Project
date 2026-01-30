@@ -1081,18 +1081,10 @@ table .text-center {
     border-left-color: var(--color-success);
 }
 
-.alert-success::before {
-    content: "✓";
-}
-
 .alert-error {
     background-color: var(--color-danger-bg);
     color: var(--color-danger);
     border-left-color: var(--color-danger);
-}
-
-.alert-error::before {
-    content: "✕";
 }
 
 .alert-warning {

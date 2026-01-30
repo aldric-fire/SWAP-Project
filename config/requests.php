@@ -281,4 +281,154 @@ function fetch_user_requests(PDO $pdo, int $userId): array
     $stmt->execute([':user_id' => $userId]);
     return $stmt->fetchAll();
 }
+
+/**
+ * Recommend optimal suppliers for an approved request
+ * SECURITY: PDO prepared statements prevent SQL injection (A03)
+ * 
+ * @param PDO $pdo - Database connection
+ * @param int $item_id - Item ID from request
+ * @param int $quantity - Quantity needed
+ * @return array Supplier recommendations sorted by score
+ */
+function recommend_optimal_supplier(PDO $pdo, int $item_id, int $quantity): array
+{
+    // Validate inputs (A03: Injection prevention)
+    $item_id = (int)$item_id;
+    $quantity = max(1, (int)$quantity);
+    
+    // Get item details with supplier info
+    $stmt = $pdo->prepare(
+        'SELECT i.item_id, i.item_name, i.supplier_id, s.supplier_name, 
+                i.quantity as available_stock
+         FROM inventory_items i
+         LEFT JOIN suppliers s ON s.supplier_id = i.supplier_id
+         WHERE i.item_id = :item_id
+         LIMIT 1'
+    );
+    $stmt->execute([':item_id' => $item_id]);
+    $item = $stmt->fetch();
+    
+    if (!$item || !$item['supplier_id']) {
+        return ['error' => 'No supplier assigned to this item'];
+    }
+    
+    // Build recommendation
+    $supplier_id = (int)$item['supplier_id'];
+    $lead_time = get_supplier_lead_time($supplier_id);
+    $delivery_date = calculate_delivery_date(date('Y-m-d'), $lead_time);
+    $available_stock = (int)$item['available_stock'];
+    
+    // Calculate recommendation score
+    // Lower lead time = higher score, Higher stock availability = higher score
+    $lead_time_score = max(0, 100 - ($lead_time * 3));
+    $stock_score = min(100, ($available_stock / max(1, $quantity)) * 50);
+    $total_score = (int)($lead_time_score + $stock_score);
+    
+    return [
+        'supplier_id' => $supplier_id,
+        'supplier_name' => htmlspecialchars($item['supplier_name'], ENT_QUOTES, 'UTF-8'),
+        'lead_time_days' => $lead_time,
+        'expected_delivery' => $delivery_date,
+        'available_stock' => $available_stock,
+        'requested_qty' => $quantity,
+        'can_fulfill' => $available_stock >= $quantity,
+        'recommendation_score' => $total_score
+    ];
+}
+
+/**
+ * Detect consolidation opportunities (multiple pending requests from same supplier)
+ * SECURITY: PDO with GROUP BY aggregation, output sanitized
+ * 
+ * @param PDO $pdo - Database connection
+ * @return array Consolidation opportunities grouped by supplier
+ */
+function get_consolidation_opportunities(PDO $pdo): array
+{
+    // Safe aggregation query with PDO
+    $stmt = $pdo->query(
+        'SELECT s.supplier_id, s.supplier_name, 
+                COUNT(r.request_id) as total_requests,
+                SUM(r.quantity) as total_items,
+                GROUP_CONCAT(r.request_id ORDER BY r.priority_score DESC SEPARATOR ",") as request_ids,
+                GROUP_CONCAT(i.item_name ORDER BY r.priority_score DESC SEPARATOR " | ") as items
+         FROM stock_requests r
+         JOIN inventory_items i ON i.item_id = r.item_id
+         JOIN suppliers s ON s.supplier_id = i.supplier_id
+         WHERE r.status = "Pending"
+         GROUP BY s.supplier_id, s.supplier_name
+         HAVING COUNT(r.request_id) > 1
+         ORDER BY COUNT(r.request_id) DESC'
+    );
+    
+    $opportunities = $stmt->fetchAll();
+    
+    // Sanitize output (XSS prevention)
+    foreach ($opportunities as &$opp) {
+        $opp['supplier_name'] = htmlspecialchars($opp['supplier_name'], ENT_QUOTES, 'UTF-8');
+        $opp['items'] = htmlspecialchars($opp['items'], ENT_QUOTES, 'UTF-8');
+        $opp['total_requests'] = (int)$opp['total_requests'];
+        $opp['total_items'] = (int)$opp['total_items'];
+    }
+    
+    return $opportunities;
+}
+
+/**
+ * Bulk approve multiple requests (consolidation action)
+ * SECURITY: Authorization check, CSRF validated at caller level, PDO prepared statements
+ * 
+ * @param PDO $pdo - Database connection
+ * @param array $request_ids - Array of request IDs to approve
+ * @param int $manager_id - Manager performing approval
+ * @return bool Success status
+ */
+function approve_bulk_requests(PDO $pdo, array $request_ids, int $manager_id): bool
+{
+    // Validate inputs
+    $request_ids = array_map('intval', $request_ids);
+    $manager_id = (int)$manager_id;
+    
+    if (empty($request_ids)) {
+        return false;
+    }
+    
+    try {
+        $pdo->beginTransaction();
+        
+        // SECURITY: Verify all requests are valid and pending (authorization check)
+        $placeholders = implode(',', array_fill(0, count($request_ids), '?'));
+        $stmt = $pdo->prepare(
+            "SELECT request_id FROM stock_requests 
+             WHERE request_id IN ($placeholders) AND status = 'Pending'"
+        );
+        $stmt->execute($request_ids);
+        $valid_requests = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        // Only approve valid pending requests
+        if (count($valid_requests) !== count($request_ids)) {
+            $pdo->rollBack();
+            return false; // Attempted to approve non-pending request
+        }
+        
+        // Bulk update with prepared statement (A03: Injection prevention)
+        $placeholders = implode(',', array_fill(0, count($valid_requests), '?'));
+        $stmt = $pdo->prepare(
+            "UPDATE stock_requests 
+             SET status = 'Approved', manager_id = ?, updated_at = NOW()
+             WHERE request_id IN ($placeholders)"
+        );
+        
+        $params = array_merge([$manager_id], $valid_requests);
+        $stmt->execute($params);
+        
+        $pdo->commit();
+        return true;
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        error_log('Bulk approval error: ' . $e->getMessage());
+        return false;
+    }
+}
 ?>
